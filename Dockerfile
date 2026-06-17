@@ -12,8 +12,7 @@ COPY branding/logo.svg         /app/packages/twenty-front/dist/assets/logo.svg
 COPY branding/logo.svg         /app/packages/twenty-front/dist/icons/logo.svg
 
 # Patch de nome: substitui "Twenty" por "Stratechna CRM" nos assets compilados
-COPY branding/rebrand.sh       /docker-entrypoint.d/99-stratechna-rebrand.sh
-RUN chmod +x /docker-entrypoint.d/99-stratechna-rebrand.sh
+COPY --chmod=755 branding/rebrand.sh /docker-entrypoint.d/99-stratechna-rebrand.sh
 
 # ── Branding backend (NestJS) ─────────────────────────────────────────────────
 # Email templates e configuração de nome da app
