@@ -2,14 +2,8 @@ name: Build Stratechna CRM
 
 on:
   schedule:
-    # Segundas-feiras 08:00 UTC
     - cron: '0 8 * * 1'
   workflow_dispatch:
-    inputs:
-      force_rebuild:
-        description: 'Forçar rebuild mesmo sem updates'
-        required: false
-        default: 'false'
 
 env:
   REGISTRY: ghcr.io
@@ -33,31 +27,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verificar versão Twenty upstream
-        id: upstream
-        run: |
-          LATEST=$(curl -s https://api.github.com/repos/twentyhq/twenty/releases/latest | jq -r .tag_name)
-          CLEAN=$(echo "${LATEST}" | tr "/" "-"); echo "twenty_version=${CLEAN}" >> $GITHUB_OUTPUT
-          echo "Twenty upstream: ${LATEST}"
-
-      - name: Verificar se imagem já existe com esta versão
-        id: check
-        run: |
-          EXISTS=$(docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.upstream.outputs.twenty_version }} 2>/dev/null && echo "true" || echo "false")
-          echo "exists=${EXISTS}" >> $GITHUB_OUTPUT
-
       - name: Build e push imagem
-        if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.upstream.outputs.twenty_version }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Notificar servidor
-        if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 95.217.8.239
