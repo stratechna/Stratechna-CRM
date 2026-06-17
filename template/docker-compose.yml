@@ -1,0 +1,105 @@
+# Stratechna CRM — Template por cliente
+# Variáveis substituídas pelo novo-cliente.sh:
+#   ${CLIENTE}          — slug do cliente (ex: esferancora)
+#   ${CRM_SECRET}       — app secret (gerado pelo script)
+#   ${CRM_DB_PASS}      — password PostgreSQL (gerada pelo script)
+#   ${EXTRA_HOSTS_RULE} — " || Host(`crm.dominio-cliente.pt`)" ou vazio
+
+services:
+
+  crm-${CLIENTE}-server:
+    image: ghcr.io/stratechna/stratechna-crm:latest
+    container_name: crm-${CLIENTE}-server
+    restart: unless-stopped
+    command: ["node", "packages/twenty-server/dist/main"]
+    depends_on:
+      - crm-${CLIENTE}-db
+      - crm-${CLIENTE}-redis
+    environment:
+      - NODE_ENV=production
+      - APP_SECRET=${CRM_SECRET}
+      - DATABASE_URL=postgresql://crm_${CLIENTE}:${CRM_DB_PASS}@crm-${CLIENTE}-db:5432/crm_${CLIENTE}
+      - REDIS_URL=redis://crm-${CLIENTE}-redis:6379
+      - FRONT_BASE_URL=https://${CLIENTE}.crm.stratechna.com
+      - SERVER_URL=https://${CLIENTE}.crm.stratechna.com
+      - STORAGE_TYPE=local
+      - STORAGE_LOCAL_PATH=/app/storage
+      - EMAIL_FROM_ADDRESS=crm@stratechna.com
+      - EMAIL_FROM_NAME=Stratechna CRM
+      - SIGN_IN_PREFILL_ENABLED=false
+      - TELEMETRY_ENABLED=false
+      - CALENDAR_PROVIDER_GOOGLE_ENABLED=false
+    volumes:
+      - crm-${CLIENTE}-storage:/app/storage
+    networks:
+      - crm-${CLIENTE}-internal
+
+  crm-${CLIENTE}-worker:
+    image: ghcr.io/stratechna/stratechna-crm:latest
+    container_name: crm-${CLIENTE}-worker
+    restart: unless-stopped
+    command: ["node", "packages/twenty-server/dist/queue-worker.js"]
+    depends_on:
+      - crm-${CLIENTE}-db
+      - crm-${CLIENTE}-redis
+    environment:
+      - NODE_ENV=production
+      - APP_SECRET=${CRM_SECRET}
+      - DATABASE_URL=postgresql://crm_${CLIENTE}:${CRM_DB_PASS}@crm-${CLIENTE}-db:5432/crm_${CLIENTE}
+      - REDIS_URL=redis://crm-${CLIENTE}-redis:6379
+      - TELEMETRY_ENABLED=false
+    networks:
+      - crm-${CLIENTE}-internal
+
+  crm-${CLIENTE}-front:
+    image: ghcr.io/stratechna/stratechna-crm:latest
+    container_name: crm-${CLIENTE}-front
+    restart: unless-stopped
+    command: ["node", "packages/twenty-front/dist/server.js"]
+    environment:
+      - REACT_APP_SERVER_BASE_URL=https://${CLIENTE}.crm.stratechna.com
+    networks:
+      - traefik
+      - crm-${CLIENTE}-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crm-${CLIENTE}.rule=Host(`${CLIENTE}.crm.stratechna.com`)${EXTRA_HOSTS_RULE}"
+      - "traefik.http.routers.crm-${CLIENTE}.entrypoints=websecure"
+      - "traefik.http.routers.crm-${CLIENTE}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-${CLIENTE}.loadbalancer.server.port=3000"
+      # Rota API — /api passa para o servidor NestJS
+      - "traefik.http.routers.crm-${CLIENTE}-api.rule=(Host(`${CLIENTE}.crm.stratechna.com`)${EXTRA_HOSTS_RULE}) && PathPrefix(`/api`)"
+      - "traefik.http.routers.crm-${CLIENTE}-api.entrypoints=websecure"
+      - "traefik.http.routers.crm-${CLIENTE}-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-${CLIENTE}-api.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.crm-${CLIENTE}-strip.stripprefix.prefixes=/api"
+
+  crm-${CLIENTE}-db:
+    image: postgres:15-alpine
+    container_name: crm-${CLIENTE}-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=crm_${CLIENTE}
+      - POSTGRES_USER=crm_${CLIENTE}
+      - POSTGRES_PASSWORD=${CRM_DB_PASS}
+    volumes:
+      - crm-${CLIENTE}-db:/var/lib/postgresql/data
+    networks:
+      - crm-${CLIENTE}-internal
+
+  crm-${CLIENTE}-redis:
+    image: redis:7-alpine
+    container_name: crm-${CLIENTE}-redis
+    restart: unless-stopped
+    networks:
+      - crm-${CLIENTE}-internal
+
+volumes:
+  crm-${CLIENTE}-storage:
+  crm-${CLIENTE}-db:
+
+networks:
+  traefik:
+    external: true
+  crm-${CLIENTE}-internal:
+    name: crm-${CLIENTE}-internal
