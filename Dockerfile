@@ -10,8 +10,6 @@ LABEL org.opencontainers.image.source="https://github.com/stratechna/Stratechna-
 
 COPY branding/logo.svg         /app/packages/twenty-front/dist/assets/logo.svg
 COPY branding/logo.svg         /app/packages/twenty-front/dist/icons/logo.svg
-COPY branding/favicon.png      /app/packages/twenty-front/dist/favicon.ico
-COPY branding/favicon.png      /app/packages/twenty-front/dist/favicon.png
 
 # Patch de nome: substitui "Twenty" por "Stratechna CRM" nos assets compilados
 COPY branding/rebrand.sh       /docker-entrypoint.d/99-stratechna-rebrand.sh
