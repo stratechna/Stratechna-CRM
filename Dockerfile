@@ -1,4 +1,4 @@
-FROM twentyhq/twenty:latest AS upstream
+FROM twentycrm/twenty:latest AS upstream
 
 LABEL org.opencontainers.image.title="Stratechna CRM"
 LABEL org.opencontainers.image.vendor="Stratechna"
