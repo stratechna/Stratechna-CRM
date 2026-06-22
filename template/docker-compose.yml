@@ -1,27 +1,33 @@
 # Stratechna CRM — Template por cliente
 # Variáveis substituídas pelo novo-cliente.sh:
-#   ${CLIENTE}          — slug do cliente (ex: esferancora)
-#   ${CRM_SECRET}       — app secret (gerado pelo script)
-#   ${CRM_DB_PASS}      — password PostgreSQL (gerada pelo script)
-#   ${EXTRA_HOSTS_RULE} — " || Host(`crm.dominio-cliente.pt`)" ou vazio
+#   CLIENTE          — slug do cliente (ex: stratechna)
+#   CRM_SECRET       — app secret (gerado pelo script)
+#   CRM_DB_PASS      — password PostgreSQL (gerada pelo script)
+#   EXTRA_HOSTS_RULE — " || Host(`crm.dominio.pt`)" ou vazio
 
 services:
 
-  crm-${CLIENTE}-server:
+  crm-CLIENTE-server:
     image: ghcr.io/stratechna/stratechna-crm:latest
-    container_name: crm-${CLIENTE}-server
+    container_name: crm-CLIENTE-server
     restart: unless-stopped
-    command: ["node", "packages/twenty-server/dist/main"]
+    working_dir: /app/packages/twenty-server
+    entrypoint: ["/app/entrypoint.sh"]
+    command: ["node", "dist/main"]
     depends_on:
-      - crm-${CLIENTE}-db
-      - crm-${CLIENTE}-redis
+      crm-CLIENTE-db:
+        condition: service_healthy
+      crm-CLIENTE-redis:
+        condition: service_started
     environment:
       - NODE_ENV=production
-      - APP_SECRET=${CRM_SECRET}
-      - DATABASE_URL=postgresql://crm_${CLIENTE}:${CRM_DB_PASS}@crm-${CLIENTE}-db:5432/crm_${CLIENTE}
-      - REDIS_URL=redis://crm-${CLIENTE}-redis:6379
-      - FRONT_BASE_URL=https://${CLIENTE}.crm.stratechna.com
-      - SERVER_URL=https://${CLIENTE}.crm.stratechna.com
+      - APP_SECRET=CRM_SECRET
+      - PG_DATABASE_URL=postgresql://crm_CLIENTE:CRM_DB_PASS@crm-CLIENTE-db:5432/crm_CLIENTE
+      - DATABASE_URL=postgresql://crm_CLIENTE:CRM_DB_PASS@crm-CLIENTE-db:5432/crm_CLIENTE
+      - REDIS_URL=redis://crm-CLIENTE-redis:6379
+      - FRONT_BASE_URL=https://crm.CLIENTE.stratechna.com
+      - SERVER_URL=https://crm.CLIENTE.stratechna.com
+      - NODE_PORT=3000
       - STORAGE_TYPE=local
       - STORAGE_LOCAL_PATH=/app/storage
       - EMAIL_FROM_ADDRESS=crm@stratechna.com
@@ -29,77 +35,77 @@ services:
       - SIGN_IN_PREFILL_ENABLED=false
       - TELEMETRY_ENABLED=false
       - CALENDAR_PROVIDER_GOOGLE_ENABLED=false
+      - MESSAGING_PROVIDER_GMAIL_ENABLED=false
+      - DISABLE_CRON_JOBS_REGISTRATION=false
     volumes:
-      - crm-${CLIENTE}-storage:/app/storage
+      - crm-CLIENTE-storage:/app/storage
     networks:
-      - crm-${CLIENTE}-internal
-
-  crm-${CLIENTE}-worker:
-    image: ghcr.io/stratechna/stratechna-crm:latest
-    container_name: crm-${CLIENTE}-worker
-    restart: unless-stopped
-    command: ["node", "packages/twenty-server/dist/queue-worker.js"]
-    depends_on:
-      - crm-${CLIENTE}-db
-      - crm-${CLIENTE}-redis
-    environment:
-      - NODE_ENV=production
-      - APP_SECRET=${CRM_SECRET}
-      - DATABASE_URL=postgresql://crm_${CLIENTE}:${CRM_DB_PASS}@crm-${CLIENTE}-db:5432/crm_${CLIENTE}
-      - REDIS_URL=redis://crm-${CLIENTE}-redis:6379
-      - TELEMETRY_ENABLED=false
-    networks:
-      - crm-${CLIENTE}-internal
-
-  crm-${CLIENTE}-front:
-    image: ghcr.io/stratechna/stratechna-crm:latest
-    container_name: crm-${CLIENTE}-front
-    restart: unless-stopped
-    command: ["node", "packages/twenty-front/dist/server.js"]
-    environment:
-      - REACT_APP_SERVER_BASE_URL=https://${CLIENTE}.crm.stratechna.com
-    networks:
-      - traefik
-      - crm-${CLIENTE}-internal
+      - proxy
+      - crm-CLIENTE-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.crm-${CLIENTE}.rule=Host(`${CLIENTE}.crm.stratechna.com`)${EXTRA_HOSTS_RULE}"
-      - "traefik.http.routers.crm-${CLIENTE}.entrypoints=websecure"
-      - "traefik.http.routers.crm-${CLIENTE}.tls.certresolver=letsencrypt"
-      - "traefik.http.services.crm-${CLIENTE}.loadbalancer.server.port=3000"
-      # Rota API — /api passa para o servidor NestJS
-      - "traefik.http.routers.crm-${CLIENTE}-api.rule=(Host(`${CLIENTE}.crm.stratechna.com`)${EXTRA_HOSTS_RULE}) && PathPrefix(`/api`)"
-      - "traefik.http.routers.crm-${CLIENTE}-api.entrypoints=websecure"
-      - "traefik.http.routers.crm-${CLIENTE}-api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.crm-${CLIENTE}-api.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.crm-${CLIENTE}-strip.stripprefix.prefixes=/api"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.crm-CLIENTE.rule=Host(`crm.CLIENTE.stratechna.com`)EXTRA_HOSTS_RULE"
+      - "traefik.http.routers.crm-CLIENTE.entrypoints=websecure"
+      - "traefik.http.routers.crm-CLIENTE.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-CLIENTE.loadbalancer.server.port=3000"
 
-  crm-${CLIENTE}-db:
+  crm-CLIENTE-worker:
+    image: ghcr.io/stratechna/stratechna-crm:latest
+    container_name: crm-CLIENTE-worker
+    restart: unless-stopped
+    working_dir: /app/packages/twenty-server
+    entrypoint: ["node"]
+    command: ["dist/queue-worker/queue-worker.js"]
+    depends_on:
+      crm-CLIENTE-db:
+        condition: service_healthy
+      crm-CLIENTE-redis:
+        condition: service_started
+      crm-CLIENTE-server:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - APP_SECRET=CRM_SECRET
+      - PG_DATABASE_URL=postgresql://crm_CLIENTE:CRM_DB_PASS@crm-CLIENTE-db:5432/crm_CLIENTE
+      - DATABASE_URL=postgresql://crm_CLIENTE:CRM_DB_PASS@crm-CLIENTE-db:5432/crm_CLIENTE
+      - REDIS_URL=redis://crm-CLIENTE-redis:6379
+      - SERVER_URL=https://crm.CLIENTE.stratechna.com
+      - TELEMETRY_ENABLED=false
+    networks:
+      - crm-CLIENTE-internal
+
+  crm-CLIENTE-db:
     image: postgres:15-alpine
-    container_name: crm-${CLIENTE}-db
+    container_name: crm-CLIENTE-db
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=crm_${CLIENTE}
-      - POSTGRES_USER=crm_${CLIENTE}
-      - POSTGRES_PASSWORD=${CRM_DB_PASS}
+      - POSTGRES_DB=crm_CLIENTE
+      - POSTGRES_USER=crm_CLIENTE
+      - POSTGRES_PASSWORD=CRM_DB_PASS
     volumes:
-      - crm-${CLIENTE}-db:/var/lib/postgresql/data
+      - crm-CLIENTE-db:/var/lib/postgresql/data
     networks:
-      - crm-${CLIENTE}-internal
+      - crm-CLIENTE-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_CLIENTE"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  crm-${CLIENTE}-redis:
+  crm-CLIENTE-redis:
     image: redis:7-alpine
-    container_name: crm-${CLIENTE}-redis
+    container_name: crm-CLIENTE-redis
     restart: unless-stopped
     networks:
-      - crm-${CLIENTE}-internal
+      - crm-CLIENTE-internal
 
 volumes:
-  crm-${CLIENTE}-storage:
-  crm-${CLIENTE}-db:
+  crm-CLIENTE-storage:
+  crm-CLIENTE-db:
 
 networks:
-  traefik:
+  proxy:
     external: true
-  crm-${CLIENTE}-internal:
-    name: crm-${CLIENTE}-internal
+  crm-CLIENTE-internal:
+    name: crm-CLIENTE-internal
