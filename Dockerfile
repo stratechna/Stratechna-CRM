@@ -1,19 +1,15 @@
-FROM twentycrm/twenty:latest AS upstream
+FROM twentycrm/twenty:latest
 
 LABEL org.opencontainers.image.title="Stratechna CRM"
 LABEL org.opencontainers.image.vendor="Stratechna"
 LABEL org.opencontainers.image.source="https://github.com/stratechna/Stratechna-CRM"
 
-# ── Branding frontend (Twenty usa Vite/React) ─────────────────────────────────
-# Os ficheiros estáticos compilados ficam em /app/packages/twenty-front/dist
-# O logo e favicon são servidos directamente
+# ── Branding: patch durante build (assets Vite têm hashes nos nomes) ──────────
+COPY branding/logo.svg /tmp/stratechna-logo.svg
+COPY branding/rebrand.sh /tmp/rebrand-build.sh
 
-COPY branding/logo.svg         /app/packages/twenty-front/dist/assets/logo.svg
-COPY branding/logo.svg         /app/packages/twenty-front/dist/icons/logo.svg
+# Executar patch de build
+RUN chmod +x /tmp/rebrand-build.sh && /tmp/rebrand-build.sh
 
-# Patch de nome: substitui "Twenty" por "Stratechna CRM" nos assets compilados
-COPY --chmod=755 branding/rebrand.sh /docker-entrypoint.d/99-stratechna-rebrand.sh
-
-# ── Branding backend (NestJS) ─────────────────────────────────────────────────
-# Email templates e configuração de nome da app
-COPY branding/app-config.json  /app/packages/twenty-server/dist/branding.json
+# Backend: branding config
+COPY branding/app-config.json /app/packages/twenty-server/dist/branding.json
