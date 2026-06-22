@@ -68,7 +68,7 @@ for i in $(seq 1 $RETRIES); do
     echo "✓ Servidor pronto."
     break
   fi
-  LOG=$(docker logs crm-${SLUG}-server 2>&1 | tail -3)
+  LOG=$(docker logs crm-${SLUG}-server 2>&1 | tail -2)
   echo "  ... aguardar (${i}/${RETRIES}): $LOG"
   sleep 10
 done
@@ -77,13 +77,31 @@ cat > "${INSTANCE_DIR}/INFO.txt" << INFO
 Stratechna CRM — ${EMPRESA}
 Slug:        ${SLUG}
 URL:         https://crm.${SLUG}.stratechna.com
+${DOMINIO_PROPRIO:+URL própria: https://${DOMINIO_PROPRIO}}
 Admin email: ${EMAIL}
-Setup:       Aceder à URL e completar wizard de primeiro login
 Criado:      $(date '+%Y-%m-%d %H:%M')
+
+SETUP INICIAL (OBRIGATÓRIO):
+─────────────────────────────────────────────────────
+1. Aceder a https://crm.${SLUG}.stratechna.com
+2. Fazer login com ${EMAIL}
+3. Ir a Settings → General
+4. Em "Workspace Logo" fazer upload do logo Stratechna
+   (ficheiro: /opt/stratechna/crm/branding/icons/icon-512.png)
+   → Isto corrige o favicon e o logo no ecrã de login
+5. Alterar o nome do workspace para "${EMPRESA}"
+─────────────────────────────────────────────────────
 INFO
 
 echo ""
 echo "✅ Stratechna CRM — instância '${SLUG}' criada!"
 echo "   URL: https://crm.${SLUG}.stratechna.com"
 echo "   Admin: ${EMAIL}"
-echo "   ⚠ Aceder à URL para completar o setup inicial (wizard Twenty)"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠  SETUP MANUAL OBRIGATÓRIO:"
+echo "   1. Aceder à URL acima e fazer login"
+echo "   2. Settings → General → Workspace Logo"
+echo "   3. Upload: /opt/stratechna/crm/branding/icons/icon-512.png"
+echo "   → Corrige favicon e logo do ecrã de login"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
