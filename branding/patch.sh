@@ -15,7 +15,17 @@ cp /tmp/branding-icons/icon-512.png "$FRONT/images/icons/android/android-launche
 cp /tmp/branding-icons/icon-180.png "$FRONT/images/icons/ios/180.png"
 cp /tmp/branding-icons/icon-192.png "$FRONT/images/icons/ios/192.png"
 
-# ── 2. Patch texto nos bundles JS e CSS ───────────────────────────────────────
+# ── 2. Substituir twenty-logo.png (usado como fallback no bundle JS) ──────────
+cp /tmp/branding-icons/icon-512.png "$FRONT/images/integrations/twenty-logo.png"
+
+# ── 3. Patch URL externo do logo placeholder no bundle JS ─────────────────────
+# O bundle usa https://twentyhq.github.io/placeholder-images/workspaces/twenty-logo.png
+# como fallback quando workspace.logo é null — substituir pelo path local
+find "$ASSETS" -name "index-*.js" | while read f; do
+  sed -i 's|https://twentyhq.github.io/placeholder-images/workspaces/twenty-logo.png|/images/integrations/twenty-logo.png|g' "$f"
+done
+
+# ── 4. Patch texto nos bundles JS e CSS ───────────────────────────────────────
 find "$ASSETS" -type f \( -name "*.js" -o -name "*.css" \) | while read f; do
   sed -i 's/Twenty CRM/Stratechna CRM/g' "$f"
   sed -i 's/Twenty is /Stratechna CRM is /g' "$f"
@@ -28,7 +38,7 @@ find "$ASSETS" -type f \( -name "*.js" -o -name "*.css" \) | while read f; do
   sed -i 's|app\.twenty\.com|crm.stratechna.com|g' "$f"
 done
 
-# ── 3. Patch index.html ───────────────────────────────────────────────────────
+# ── 5. Patch index.html ───────────────────────────────────────────────────────
 if [ -f "$INDEX" ]; then
   sed -i 's/<title>Twenty<\/title>/<title>Stratechna CRM<\/title>/g' "$INDEX"
   sed -i 's/A modern open-source CRM/Stratechna CRM/g' "$INDEX"
